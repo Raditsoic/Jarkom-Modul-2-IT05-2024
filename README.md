@@ -13,6 +13,66 @@
 
 
 ### Soal 1
+- Untuk membuat DNS master pada node **pochinki**, buka file `/etc/bind/named.conf.local` dan tambahkan script ini:
+```bash
+zone "pochinki.com" {
+    type master;
+    also-notify { 10.66.4.2; };
+    allow-transfer { 10.66.4.2; };
+    file "/etc/bind/jarkom/pochinki.com";
+};
+```
+Lalu pada file `etc/bind/jarkom/pochinki.com` ubah konfigurasinya menjadi:
+```bash
+;
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     pochinki.com. root.pochinki.com. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@       IN      NS      pochinki.com.
+@       IN      A       10.66.3.2
+@       IN      AAAA    ::1
+```
+
+- Selanjutnya kita akan membuat DNS slave pada node **Georgopool**. Buka file `/etc/bind/named.conf.local` di dalam node **Georgopool**, lalu tambahkan script berikut :
+```bash
+zone "pochinki.com" {
+    type slave;
+    masters { 10.66.3.2; };
+    file "/var/lib/bind/pochinki.com";
+};
+```
+ini akan membuat DNS slave yang mengarah ke **Pochinki**.
+
+- Lalu kita akan membuat 3 web server pada **Severny**, **Stalber**, dan **Lipovka**. Kita juga akan membuat **Mylta** sebagai load balancer untuk ketiga web server tersebut. Tambahkan script ini ke ketiga node yang ingin kita jadikan web server:
+```bash
+server {
+    listen 8002;
+    root /var/www/html/mylta.it05.com/;
+    index index.php index.html index.htm;
+
+    server_name mylta.it05.com;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}'
+```
 
 ### Soal 2
 
@@ -117,8 +177,14 @@ www     IN      CNAME   loot.it05.com.
 ```
 
 ### Soal 5
+- pada **zharki** :
+![zharki](<test_zharki.jpg>)
 
-Dokumentasi
+- pada **yasnaya** :
+![yasnaya](<test_yasnaya.jpg>)
+
+- pada **primorsk** :
+![primorsk](<test_primorsk.jpg>)
 
 ### Soal 6
 
@@ -196,14 +262,14 @@ medkit  IN      A       10.66.4.2
 
 ### Soal 9 
 
-Untuk menambahkan subdomain *siren* dan alias *www* pada **redzone.it05.com** kita bisa menambahkan pada conf **redzone.it05.com** dan mengarahkan ke IP *Georgopol* seperti berikut:
+Untuk menambahkan subdomain *siren* dan alias *www* pada **redzone.it05.com** kita bisa menambahkan pada conf **redzone.it05.com** dan mengarahkan ke IP *Georgopool* seperti berikut:
 
 ```bash
 ns1     IN      A       10.66.4.2
 siren   IN      NS      ns1
 ```
 
-Pada node *Pochinki* dan *Georgpol* kita juga perlu menambahkan code sebagai berikut pada `/etc/bind/named.conf.options`:
+Pada node *Pochinki* dan *Georgopool* kita juga perlu menambahkan code sebagai berikut pada `/etc/bind/named.conf.options`:
 
 ```bash
 allow-query{any;};
@@ -259,12 +325,58 @@ forwarders {
 ```
 
 ### Soal 12
+Untuk mendeploy website menggunakan apache, lakukan config pada file `/etc/apache2/sites-available/default`
+```bash
+server {
+    listen 8002;
+    root /var/www/html/mylta.it05.com/;
+    index index.php index.html index.htm;
 
+    server_name mylta.it05.com;
+    server_alias www.mylta.it05.com
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+```
 ### Soal 13
+Gunakan script ini untuk menggunakan apache sebagai web server dan load balancernya:
+```bash
+server {
+    listen 8002;
+    root /var/www/html/mylta.it05.com/;
+    index index.php index.html index.htm;
 
+    server_name parikesit.mylta.it05.com;
+    server_alias www.parikesit.mylta.it05.com
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php7.0-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+```
 ### Soal 14
 
-Kita bisa setup worker dalam web server nginx pada file `/etc/nginx/sites-available/default` *Severny*, *Stalber*, dan *Lipovka* dengan sebagai berikut:
+Kita bisa setup worker dalam web server nginx pada file `/etc/nginx/sites-available/default` **Severny**, **Stalber**, dan **Lipovka** dengan sebagai berikut:
 
 ```bash
 server {
@@ -301,4 +413,81 @@ lalu kita bisa menyalakan web-server nginx dengan `service nginx restart` atau `
 
 Note: /var/www/html/mylta.it05.com/index.php adalah file yang akan di host oleh web server
 
+### Soal 16
+Buka file `/etc/bind/named.conf.local` pada node **Pochinki** dan tambahkan:
+```bash
+zone "mylta.it05.com" {
+    type master;
+    file "/etc/bind/jarkom/mylta.it05.com";
+};
+```
+dan 
+```bash
+zone "1.66.10.in-addr.arpa" {
+    type master;
+    notify yes;
+    also-notify { 10.66.4.2; };
+    allow-transfer { 10.66.4.2; };
+    file "/etc/bind/jarkom/1.66.10.in-addr.arpa";
+};
+```
+
+lalu config pada file `/etc/bind/jarkom/mylta.it05.com`:
+```bash
+;
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     mylta.it05.com. root.mylta.it05.com. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+@             IN      NS      mylta.it05.com.
+@             IN      A       10.66.1.5 ; IP mylta
+www           IN      CNAME   mylta.it05.com.
+```
+
+config pada file `1.66.10.in-addr.arpa`:
+```bash
+;
+; BIND data file for local loopback interface
+;
+$TTL    604800
+@       IN      SOA     mylta.it05.com. root.mylta.it05.com. (
+                              2         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+; PTR Records
+1.66.10.in-addr.arpa.    IN      NS      mylta.it05.com.
+2                        IN      PTR     www.mylta.it05.com.
+```
+
+### Soal 17
+Pada nginx **mylta**, lakukan config:
+```bash
+upstream mylta {
+    server 10.66.1.4:8002; 
+    server 10.66.1.2:8002; 
+    server 10.66.1.3:8002; 
+}
+
+server {
+  listen 14000;
+  listen 14400;
+  server_name 10.66.1.5;
+
+  location / {
+    proxy_pass http://mylta;
+  }
+}
+" > /etc/nginx/sites-available/default
+```
+
+### Soal 18
+Untuk soal 18, pengerjaannya sudah dilakukan bersamaan dengan soal 16
 
