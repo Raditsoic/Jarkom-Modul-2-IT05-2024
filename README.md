@@ -185,12 +185,12 @@ www     IN      CNAME   loot.it05.com.
 - pada **yasnaya** :
 
 
-![yasnaya](img/test_yasnaya.jpg>)
+![yasnaya](<img/test_yasnaya.jpg>)
 
 - pada **primorsk** :
 
 
-![primorsk](img/test_primorsk.jpg)
+![primorsk](<img/test_primorsk.jpg>)
 ### Soal 6
 
 Untuk menambahkan pointer record pada domain **redzone.it05.com**. Pada `/etc/bind/named.conf.local` tambahkan:
